@@ -1,0 +1,27 @@
+[project]
+name = "lj-signage"
+version = "0.1.0"
+description = "Gestão central dos vídeos das TVs de frente de loja do Lugar da Jóia"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# DTZ: proíbe datetimes sem fuso (regra 7 do CLAUDE.md).
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "DTZ", "S608"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S608"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "ffmpeg: precisa de ffmpeg/ffprobe instalados",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:pyftpdlib.*",
+]

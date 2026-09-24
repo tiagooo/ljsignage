@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+.pytest_cache
+.ruff_cache
+**/__pycache__
+data
+config/devices.yaml
+*.db
+*.db-wal
+*.db-shm
+.DS_Store

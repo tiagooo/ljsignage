@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill, write_mode_pill %}
+{% block title %}Plano{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Plano</h1>
+    <p class="muted">
+      O que a próxima sincronização vai fazer em cada loja, calculado a partir da última leitura de cada Pi e da programação atual.
+      {% if dry_run %}<strong>Modo simulação: nada disto é executado.</strong>{% endif %}
+    </p>
+  </div>
+  <span class="pill pill-info plain">{{ total }} alteração(ões) no total</span>
+</div>
+
+{% for s in summaries %}
+  {% set plan = s.plan %}
+  <section class="card">
+    <div class="page-head">
+      <div>
+        <h2><a href="{{ url_for('devices.detail', code=s.device.code) }}">{{ s.device.store_number }} · {{ s.device.name }}</a></h2>
+        <div class="kv">
+          <span>{{ status_pill(s.device.status) }}</span>
+          <span>{{ write_mode_pill(s.write_mode) }}</span>
+          <span>Última leitura: <strong>{{ s.device.snapshot_at|dt or "nunca" }}</strong></span>
+        </div>
+      </div>
+      {% if plan and plan.actions and s.device.video_path %}
+        <form hx-post="{{ url_for('devices.apply_now', code=s.device.code) }}" hx-swap="outerHTML" method="post" action="{{ url_for('devices.apply_now', code=s.device.code) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-secondary btn-small" type="submit">{{ "Aplicar agora" if s.write_mode == "Escrita ativa" else "Ler loja agora" }}</button>
+        </form>
+      {% endif %}
+    </div>
+    {% if not s.device.video_path %}
+      <p class="muted">Pasta de vídeos por confirmar.</p>
+    {% elif plan is none %}
+      <p class="muted">A loja ainda não foi lida.</p>
+    {% else %}
+      {% if plan.actions %}
+        <ol class="steps">
+          {% for action in plan.actions %}<li>{{ describe(action, plan) }}</li>{% endfor %}
+        </ol>
+      {% else %}
+        <p class="alert alert-ok">Em dia: nada a fazer.</p>
+      {% endif %}
+      {% if plan.desired %}
+        <p class="small muted section">Depois: {% for item in plan.desired %}{{ loop.index }}. {{ item.video.title or item.video.slug }}{{ " (reserva)" if item.want.is_fallback }}{{ ", " if not loop.last }}{% endfor %}{% if plan.classified.legacy | selectattr("playable") | list %} + ficheiros legados{% endif %}.</p>
+      {% endif %}
+      {% set notices = plan.notices | rejectattr("level", "equalto", "info") | list %}
+      {% if notices %}
+        <ul class="alerts compact">
+          {% for n in notices %}<li class="alert alert-{{ n.level }}">{{ n.message }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    {% endif %}
+  </section>
+{% else %}
+  <p class="muted">Ainda não há lojas.</p>
+{% endfor %}
+{% endblock %}

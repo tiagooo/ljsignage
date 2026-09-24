@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Painel{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Lojas</h1>
+    <p class="muted">Estado das TVs de frente de loja. "Online" significa que o Raspberry Pi responde por FTP; não é possível saber que vídeo está a passar.</p>
+  </div>
+  <div class="summary-bar">
+    <span class="pill pill-online">{{ counts.get('online', 0) }} online</span>
+    <span class="pill pill-offline">{{ counts.get('offline', 0) }} offline</span>
+    <span class="pill pill-error">{{ counts.get('error', 0) }} com erro</span>
+    {% if counts.get('unknown') %}<span class="pill pill-unknown">{{ counts.get('unknown') }} por verificar</span>{% endif %}
+  </div>
+</div>
+{% include "dashboard/_grid.html" %}
+{% endblock %}

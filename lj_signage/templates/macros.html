@@ -1,0 +1,55 @@
+{% macro flashes() -%}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="flash flash-{{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+{%- endmacro %}
+
+{% macro status_pill(status) -%}
+  <span class="pill pill-{{ status }}">{{ STATUS_LABELS.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro post_button(url, label, cls="btn btn-secondary btn-small", confirm=None, fields=None) -%}
+  <form class="inline" method="post" action="{{ url }}"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for name, value in (fields or {}).items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    <button type="submit" class="{{ cls }}">{{ label }}</button>
+  </form>
+{%- endmacro %}
+
+{% macro alert_list(alerts, compact=False) -%}
+  {% if alerts %}
+    <ul class="alerts{{ ' compact' if compact }}">
+      {% for alert in alerts %}
+        <li class="alert alert-{{ alert.level }}">{{ alert.message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{%- endmacro %}
+
+{% macro loop_duration(known, unknown) -%}
+  {% if known or not unknown %}{{ known|duration }}{% endif %}{% if unknown %}{% if known %} + {% endif %}{{ unknown }} de duração desconhecida{% endif %}
+{%- endmacro %}
+
+{% macro write_mode_pill(mode) -%}
+  {% if mode == "Escrita ativa" %}
+    <span class="pill pill-ok plain" title="As alterações são enviadas para este Pi">Escrita ativa</span>
+  {% elif mode == "Simulação" %}
+    <span class="pill pill-info plain" title="DRY_RUN=true: nada é escrito nos Pis">Simulação</span>
+  {% else %}
+    <span class="pill pill-idle plain" title="enabled: false no devices.yaml">Só leitura</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro job_line(job) -%}
+  <span class="pill pill-{{ {'pending': 'idle', 'running': 'info', 'done': 'ok', 'failed': 'error'}.get(job.status, 'idle') }} plain">{{ JOB_STATUS_LABELS.get(job.status, job.status) }}</span>
+  <strong>{{ JOB_LABELS.get(job.type, job.type) }}</strong>
+  <span class="muted small">{{ job.created_at|ago }}</span>
+  {% if job.status == 'failed' and job.error %}<div class="small text-error">{{ job.error }}</div>
+  {% elif job.message %}<div class="small muted">{{ job.message }}</div>{% endif %}
+{%- endmacro %}

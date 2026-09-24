@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Configuração local e credenciais (nunca no repositório)
+.env
+config/devices.yaml
+
+# Dados da aplicação (SQLite, media, backups)
+/data/
+*.db
+*.db-wal
+*.db-shm
+instance/
+
+# Sistema
+.DS_Store

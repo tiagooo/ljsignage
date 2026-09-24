@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "macros.html" import post_button %}
+{% block title %}Programação{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Programação</h1>
+    <p class="muted">O que passa em cada loja e quando. Os vídeos passam por ordem crescente; o vídeo de reserva só passa quando não há nada programado.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{{ url_for('schedule.calendar') }}">Calendário</a>
+    <a class="btn" href="{{ url_for('schedule.create') }}">Nova programação</a>
+  </div>
+</div>
+
+{% if not fallback_ok %}
+  <p class="alert alert-warning">
+    Não há nenhum vídeo de reserva a decorrer. Sem reserva, quando uma campanha termina fica a passar o que já estava na loja.
+    <a href="{{ url_for('schedule.create', reserva=1) }}">Definir vídeo de reserva</a>
+  </p>
+{% endif %}
+
+<nav class="tabs" aria-label="Filtro">
+  <a href="{{ url_for('schedule.index', ver='atuais') }}" class="{{ 'active' if view == 'atuais' }}">A decorrer e agendadas</a>
+  <a href="{{ url_for('schedule.index', ver='terminadas') }}" class="{{ 'active' if view == 'terminadas' }}">Terminadas</a>
+  <a href="{{ url_for('schedule.index', ver='todas') }}" class="{{ 'active' if view == 'todas' }}">Todas</a>
+</nav>
+
+<section class="card">
+  {% if rows %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Vídeo</th><th>Onde</th><th>Início</th><th>Fim</th><th class="num">Ordem</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% set a = row.a %}
+            <tr class="{{ 'row-ended' if row.state == 'ended' }}">
+              <td class="col-video">
+                <a href="{{ url_for('library.detail', video_id=a.video_id) }}">{{ a.video.title }}</a>
+                {% if a.is_fallback %}<span class="tag tag-fallback">reserva</span>{% endif %}
+                {% if a.note %}<div class="muted small">{{ a.note }}</div>{% endif %}
+              </td>
+              <td class="col-target">{{ row.target }}<div class="muted small">{{ row.devices|length }} loja(s)</div></td>
+              <td class="nowrap">{{ a.start_at|dt }}</td>
+              <td class="nowrap">{{ a.end_at|dt if a.end_at else "sem fim" }}</td>
+              <td class="num">{{ a.position }}</td>
+              <td>
+                <span class="pill plain pill-{{ {'running': 'ok', 'scheduled': 'info', 'waiting': 'warning', 'ended': 'idle', 'invalid': 'error'}[row.state] }}">{{ row.state_label }}</span>
+                {% if row.estimate and not dry_run %}
+                  <div class="small muted">
+                    {% if row.estimate.at %}Entra no ar até {{ row.estimate.at|time }}{% if row.estimate.at|date != now|date %} de {{ row.estimate.at|date }}{% endif %}{% else %}{{ row.estimate.note }}{% endif %}
+                  </div>
+                {% endif %}
+              </td>
+              <td class="num col-actions">
+                <div class="actions">
+                  <a class="btn btn-ghost btn-small" href="{{ url_for('schedule.edit', assignment_id=a.id) }}">Editar</a>
+                  {% if row.state in ('running', 'scheduled', 'waiting') %}
+                    {{ post_button(url_for('schedule.end_now', assignment_id=a.id), "Terminar agora", confirm="Terminar agora esta programação? O vídeo sai das lojas na próxima sincronização.") }}
+                  {% endif %}
+                  {{ post_button(url_for('schedule.delete', assignment_id=a.id), "Apagar", "btn btn-danger btn-small", confirm="Apagar esta programação?") }}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Nada para mostrar. <a href="{{ url_for('schedule.create') }}">Criar uma programação</a>.</p>
+  {% endif %}
+</section>
+{% endblock %}

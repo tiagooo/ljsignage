@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar programação" if assignment else "Nova programação" }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="{{ url_for('schedule.index') }}">Programação</a> ›</p>
+    <h1>{{ "Editar programação" if assignment else "Nova programação" }}</h1>
+    <p class="muted">Horas de Portugal continental ({{ "Europe/Lisbon" }}).</p>
+  </div>
+</div>
+
+<form class="card" method="post" data-target-selector>
+  {{ form.csrf_token }}
+  <div class="field">
+    <label for="video_id">Vídeo</label>
+    {{ form.video_id(id="video_id") }}
+    <span class="help">Só aparecem vídeos da biblioteca. Um vídeo "a processar" começa a passar quando a conversão terminar.</span>
+  </div>
+
+  <fieldset class="field">
+    <legend class="label">Onde passa</legend>
+    <div class="radio-list">
+      {% for option in form.target_type %}
+        <label>{{ option() }} {{ option.label.text }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="field-row">
+    <div class="field" data-target-field="group">
+      <label for="group_id">Grupo</label>
+      {{ form.group_id(id="group_id") }}
+      <span class="help">Os grupos são definidos no devices.yaml.</span>
+    </div>
+    <div class="field" data-target-field="device">
+      <label for="device_id">Loja</label>
+      {{ form.device_id(id="device_id") }}
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="start_at">Início</label>
+      {{ form.start_at(id="start_at", required=true) }}
+    </div>
+    <div class="field">
+      <label for="end_at">Fim <span class="muted small">(opcional)</span></label>
+      {{ form.end_at(id="end_at") }}
+      <span class="help">Deixe vazio para não ter fim.</span>
+    </div>
+    <div class="field">
+      <label for="position">Ordem</label>
+      {{ form.position(id="position", min=1, max=9999) }}
+      <span class="help">Número menor passa primeiro. Com números iguais, passa primeiro o que começou antes.</span>
+    </div>
+  </div>
+
+  <div class="field check">
+    <label>{{ form.is_fallback() }} Vídeo de reserva</label>
+    <span class="help">Passa apenas quando não há mais nada programado para a loja, para nunca haver ecrã preto. Deve existir sempre um, sem data de fim.</span>
+  </div>
+
+  <div class="field">
+    <label for="note">Nota interna <span class="muted small">(opcional)</span></label>
+    {{ form.note(id="note", maxlength=200) }}
+  </div>
+
+  <div class="actions">
+    <button class="btn" type="submit">{{ "Guardar alterações" if assignment else "Criar programação" }}</button>
+    <a class="btn btn-ghost" href="{{ url_for('schedule.index') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

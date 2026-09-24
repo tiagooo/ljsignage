@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Atividade{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Atividade</h1>
+    <p class="muted">Registo de tudo o que foi feito no painel e nas lojas.</p>
+  </div>
+</div>
+
+<form class="card filters" method="get" action="{{ url_for('activity.index') }}">
+  <div class="field">
+    <label for="loja">Loja</label>
+    <select id="loja" name="loja">
+      <option value="">Todas</option>
+      {% for d in devices %}<option value="{{ d.code }}"{% if filters.loja == d.code %} selected{% endif %}>{{ d.label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="utilizador">Quem</label>
+    <select id="utilizador" name="utilizador">
+      <option value="">Todos</option>
+      <option value="sistema"{% if filters.utilizador == "sistema" %} selected{% endif %}>Sistema</option>
+      {% for email, name in users %}<option value="{{ email }}"{% if filters.utilizador == email %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="acao">Ação</label>
+    <select id="acao" name="acao">
+      <option value="">Todas</option>
+      {% for key, label in actions %}<option value="{{ key }}"{% if filters.acao == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="resultado">Resultado</label>
+    <select id="resultado" name="resultado">
+      <option value="">Todos</option>
+      {% for key, label in results.items() %}<option value="{{ key }}"{% if filters.resultado == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="de">De</label>
+    <input type="date" id="de" name="de" value="{{ filters.de }}">
+  </div>
+  <div class="field">
+    <label for="ate">Até</label>
+    <input type="date" id="ate" name="ate" value="{{ filters.ate }}">
+  </div>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if query %}<a class="btn btn-ghost" href="{{ url_for('activity.index') }}">Limpar</a>{% endif %}
+</form>
+
+<section class="card section">
+  {% if page.items %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Quem</th><th>Loja</th><th>Ação</th><th>Detalhe</th><th>Resultado</th></tr></thead>
+        <tbody>
+          {% for entry in page.items %}
+            <tr>
+              <td class="nowrap">{{ entry.created_at|dt }}</td>
+              <td>{{ entry.user_name or entry.user_email or "Sistema" }}</td>
+              <td class="nowrap">{% if entry.device_code %}<a href="{{ url_for('devices.detail', code=entry.device_code) }}">{{ entry.device_code }}</a>{% else %}—{% endif %}</td>
+              <td>{{ ACTION_LABELS.get(entry.action, entry.action) }}</td>
+              <td>
+                {{ entry.detail }}
+                {% if entry.data and entry.data.get("actions") %}
+                  <ol class="steps small">{% for step in entry.data["actions"] %}<li>{{ step }}</li>{% endfor %}</ol>
+                {% endif %}
+              </td>
+              <td><span class="pill plain pill-{{ {'ok': 'ok', 'error': 'error', 'dry_run': 'info', 'denied': 'warning', 'info': 'idle'}.get(entry.result, 'idle') }}">{{ RESULT_LABELS.get(entry.result, entry.result) }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Páginas">
+      {% if page.has_prev %}<a class="btn btn-ghost btn-small" href="{{ url_for('activity.index', page=page.prev_num, **query) }}">‹ Mais recentes</a>{% endif %}
+      <span class="muted small">Página {{ page.page }} de {{ page.pages or 1 }} · {{ page.total }} registo(s)</span>
+      {% if page.has_next %}<a class="btn btn-ghost btn-small" href="{{ url_for('activity.index', page=page.next_num, **query) }}">Mais antigos ›</a>{% endif %}
+    </nav>
+  {% else %}
+    <p class="muted">Sem registos para estes filtros.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,80 @@
+# Fonte única dos dispositivos. Copiar para config/devices.yaml.
+# 12 Raspberry Pi (a loja 01 / sede não tem).
+# video_path: null -> descoberta automática, com confirmação no painel.
+
+defaults:
+  domain: lugardajoia.internal   # FQDN = <hostname>.<domain>
+  ftp_port: 21
+  ftp_passive: true
+  login_home: /home/tmagalhaes
+  enabled: false                 # só ativar no Pi piloto (Fase 3)
+  max_bytes: null                # capacidade útil para vídeos, se conhecida
+
+# Grupos de EXEMPLO - a definir pela equipa. "todas" é implícito.
+groups:
+  norte: ["04", "05", "06", "09", "10", "11"]
+  centro: ["08", "13"]
+  sul: ["02", "03", "07", "12"]
+  galeria-da-joia: ["03", "04"]
+
+devices:
+  - store: "02"
+    name: Lugar da Jóia UBBO
+    code: ubbo
+    hostname: raspservidorubbo
+    video_path: null
+  - store: "03"
+    name: Galeria da Jóia UBBO
+    code: ub
+    hostname: raspservidorub
+    video_path: null
+  - store: "04"
+    name: Galeria da Jóia Porto
+    code: gjpt
+    hostname: raspservidorgjpt
+    video_path: null
+  - store: "05"
+    name: Lugar da Jóia Alameda
+    code: al
+    hostname: raspservidoral
+    video_path: null
+  - store: "06"
+    name: Lugar da Jóia NossoShopping
+    code: "no"                    # entre aspas: YAML lê no como booleano
+    hostname: raspservidorno
+    video_path: null
+  - store: "07"
+    name: Lugar da Jóia Forum Almada
+    code: fa
+    hostname: raspservidorfa
+    video_path: null
+  - store: "08"
+    name: Lugar da Jóia Forum Coimbra
+    code: fc
+    hostname: raspservidorfc
+    video_path: null
+  - store: "09"
+    name: Lugar da Jóia NorteShopping
+    code: ns
+    hostname: raspservidorns
+    video_path: null
+  - store: "10"
+    name: Lugar da Jóia Nova Arcada
+    code: na
+    hostname: raspservidorna
+    video_path: null
+  - store: "11"
+    name: Lugar da Jóia Braga Parque
+    code: bp
+    hostname: raspservidorbp
+    video_path: null
+  - store: "12"
+    name: Lugar da Jóia Alegro Sintra
+    code: as
+    hostname: raspservidoras
+    video_path: null
+  - store: "13"
+    name: Lugar da Jóia Forum Viseu
+    code: fv
+    hostname: raspservidorfv
+    video_path: null

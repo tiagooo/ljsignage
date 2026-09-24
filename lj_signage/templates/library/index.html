@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Biblioteca{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Biblioteca</h1>
+    <p class="muted">Os vídeos enviados são convertidos para o formato das TVs (MP4 H.264, 1920×1080{{ ", sem som" if not settings_view.audio_enabled }}) e verificados antes de poderem ser programados.</p>
+  </div>
+  <form class="filters" method="get" action="{{ url_for('library.index') }}" role="search">
+    <div class="field">
+      <label for="q" class="sr-only">Procurar</label>
+      <input type="search" id="q" name="q" value="{{ query }}" placeholder="Procurar por título">
+    </div>
+    <button class="btn btn-secondary" type="submit">Procurar</button>
+  </form>
+</div>
+
+<section class="card">
+  <div class="dropzone" data-dropzone data-url="{{ url_for('library.upload') }}" data-list="uploads" data-target="video-grid" tabindex="0" role="button" aria-label="Enviar vídeos">
+    <strong>Arraste vídeos para aqui</strong>
+    <span>ou clique para escolher (MP4, MOV/ProRes, MKV, AVI…, até {{ settings_view.max_upload_label }})</span>
+    <input type="file" accept="{{ accept }}" multiple hidden>
+  </div>
+  <ul class="uploads" id="uploads" aria-live="polite"></ul>
+</section>
+
+<section class="section">
+  <div class="video-grid" id="video-grid">
+    {% for video in videos %}
+      {% with job=latest_jobs.get(video.id), scheduled=schedule_counts.get(video.id, 0) %}
+        {% include "library/_card.html" %}
+      {% endwith %}
+    {% endfor %}
+  </div>
+  {% if not videos %}
+    <p class="muted" id="library-empty">{% if query %}Nenhum vídeo com "{{ query }}".{% else %}Ainda não há vídeos. Envie o primeiro acima.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

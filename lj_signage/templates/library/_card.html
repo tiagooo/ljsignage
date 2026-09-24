@@ -1,0 +1,37 @@
+<article class="card video-card" id="video-{{ video.id }}"{% if video.status == "processing" %} hx-get="{{ url_for('library.status', video_id=video.id) }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <a class="thumb" href="{{ url_for('library.detail', video_id=video.id) }}">
+    {% if video.thumbnail_path %}
+      <img src="{{ url_for('library.thumbnail', video_id=video.id) }}" alt="" loading="lazy">
+    {% elif video.status == "processing" %}
+      <span>A converter…</span>
+    {% elif video.status == "failed" %}
+      <span>Conversão falhou</span>
+    {% else %}
+      <span>Sem miniatura</span>
+    {% endif %}
+  </a>
+  <div class="body">
+    <h3><a href="{{ url_for('library.detail', video_id=video.id) }}">{{ video.title }}</a></h3>
+    <div class="meta">
+      {% if video.status == "ready" %}
+        <span class="pill pill-ok plain">Pronto</span>
+        <span>{{ video.duration_s|duration }}</span>
+        <span>{{ video.size_bytes|filesize }}</span>
+      {% elif video.status == "processing" %}
+        <span class="pill pill-info plain">A processar</span>
+        {% if job and job.status == "pending" %}<span>Na fila</span>{% endif %}
+      {% else %}
+        <span class="pill pill-error plain">Falhou</span>
+      {% endif %}
+      {% if scheduled %}<span>Programado ({{ scheduled }})</span>{% endif %}
+      {% if video.origin == "legacy" %}<span class="tag tag-legacy">Legado</span>{% endif %}
+    </div>
+    {% if video.status == "processing" %}
+      <progress max="100" value="{{ (job.progress or 0) if job else 0 }}" aria-label="Progresso da conversão"></progress>
+      <span class="muted small">{% if job and job.progress %}{{ job.progress|round|int }}%{% else %}A preparar…{% endif %}</span>
+    {% elif video.status == "failed" and video.error %}
+      <span class="small text-error">{{ video.error }}</span>
+    {% endif %}
+    <span class="muted small">{{ video.created_at|dt }}{% if video.created_by %} · {{ video.created_by }}{% endif %}</span>
+  </div>
+</article>

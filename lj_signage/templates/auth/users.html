@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "macros.html" import post_button %}
+{% block title %}Utilizadores{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Utilizadores</h1>
+    <p class="muted">Quem pode entrar no painel. Só são aceites contas @{{ domain }}.</p>
+  </div>
+</div>
+
+<div class="two-cols">
+  <div>
+    <div class="card">
+      <h2>Editores</h2>
+      <p class="muted small">Gerem a biblioteca e a programação.</p>
+      {% if editors %}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>Acesso</th><th>Última entrada</th><th></th></tr></thead>
+            <tbody>
+              {% for user in editors %}
+                <tr>
+                  <td>{{ user.name or "—" }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    {% if user.authorized %}<span class="pill pill-ok plain">Autorizado</span>
+                    {% else %}<span class="pill pill-idle plain">Sem acesso</span>{% endif %}
+                  </td>
+                  <td class="nowrap">{{ user.last_login_at|ago }}</td>
+                  <td class="num">
+                    {% if user.authorized %}
+                      {{ post_button(url_for('auth.revoke', user_id=user.id), "Remover acesso", "btn btn-danger btn-small", confirm="Remover o acesso de " ~ user.email ~ "?") }}
+                    {% else %}
+                      {{ post_button(url_for('auth.authorize'), "Dar acesso", fields={"email": user.email}) }}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted">Ainda não há editores autorizados.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <h2>Autorizar um editor</h2>
+      <form method="post" action="{{ url_for('auth.authorize') }}">
+        {{ form.csrf_token }}
+        <div class="field">
+          <label for="email">Email</label>
+          {{ form.email(id="email", placeholder="nome.apelido@" ~ domain, required=true) }}
+        </div>
+        <button class="btn" type="submit">Dar acesso</button>
+      </form>
+    </div>
+    <div class="card card-muted">
+      <h2>Administradores</h2>
+      <p class="small muted">Definidos no servidor (ADMIN_EMAILS no .env). Gerem as lojas, a descoberta da pasta, os ficheiros legados e os utilizadores.</p>
+      <ul>
+        {% for email, user in admins %}
+          <li>{{ user.name if user and user.name else email }}{% if user and user.name %} <span class="muted small">{{ email }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

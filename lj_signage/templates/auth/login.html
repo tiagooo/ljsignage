@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "macros.html" import flashes %}
+{% block title %}Entrar{% endblock %}
+{% block body %}
+<div class="login">
+  <div class="card">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">LJ</span>
+      <span class="brand-text"><strong>Lugar da Jóia</strong><small>Vídeos das lojas</small></span>
+    </div>
+    <h1>Entrar</h1>
+    <p class="muted">Use a sua conta Google @{{ domain }}. Só as contas autorizadas por um administrador têm acesso.</p>
+    {{ flashes() }}
+    {% if google_ready %}
+      <a class="btn" href="{{ url_for('auth.login_google') }}">Entrar com a Google</a>
+    {% else %}
+      <div class="alert alert-warning">O início de sessão com a Google ainda não está configurado (GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no .env).</div>
+    {% endif %}
+    {% if dev_login %}
+      <form class="dev-login" method="post" action="{{ url_for('auth.dev_login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="dev-email">Entrada de desenvolvimento</label>
+          <select id="dev-email" name="email">
+            {% for email in dev_users %}<option>{{ email }}</option>{% endfor %}
+          </select>
+          <span class="help">Só disponível com FLASK_DEBUG=1 e AUTH_DEV_LOGIN=true.</span>
+        </div>
+        <button class="btn btn-secondary" type="submit">Entrar (desenvolvimento)</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Calendário{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="{{ url_for('schedule.index') }}">Programação</a> ›</p>
+    <h1>Calendário · {{ title }}</h1>
+  </div>
+  <div class="actions">
+    <form class="filters" method="get" action="{{ url_for('schedule.calendar') }}">
+      <input type="hidden" name="mes" value="{{ request.args.get('mes', '') }}">
+      <div class="field">
+        <label for="loja" class="sr-only">Loja</label>
+        <select id="loja" name="loja">
+          <option value="">Todas as lojas</option>
+          {% for d in devices %}<option value="{{ d.code }}"{% if device and device.id == d.id %} selected{% endif %}>{{ d.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-secondary" type="submit">Filtrar</button>
+    </form>
+    <a class="btn btn-ghost" href="{{ url_for('schedule.calendar', mes=previous, loja=device.code if device else None) }}">‹ Anterior</a>
+    <a class="btn btn-ghost" href="{{ url_for('schedule.calendar', loja=device.code if device else None) }}">Hoje</a>
+    <a class="btn btn-ghost" href="{{ url_for('schedule.calendar', mes=following, loja=device.code if device else None) }}">Seguinte ›</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <div class="calendar" role="grid" aria-label="{{ title }}">
+    {% for name in weekdays %}<div class="weekday" role="columnheader">{{ name }}</div>{% endfor %}
+    {% for week in weeks %}
+      {% for day in week %}
+        <div class="day{{ ' other' if not day.in_month }}{{ ' today' if day.today }}" role="gridcell">
+          <span class="day-number">{{ day.date.day }}</span>
+          {% for a in day["items"] %}
+            <a class="chip chip-{{ colors[a.id] }}{{ ' chip-fallback' if a.is_fallback }}" href="{{ url_for('schedule.edit', assignment_id=a.id) }}" title="{{ a.video.title }} · {{ a.start_at|dt }} → {{ a.end_at|dt if a.end_at else 'sem fim' }}">{{ a.video.title }}</a>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+<p class="muted small">Os vídeos de reserva aparecem tracejados. Clique numa programação para a editar.</p>
+{% endblock %}

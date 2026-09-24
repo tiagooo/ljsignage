@@ -1,0 +1,14 @@
+{% from "macros.html" import job_line %}
+{% set busy = recent_jobs | selectattr("status", "in", ["pending", "running"]) | list %}
+<div id="device-jobs"{% if busy %} hx-get="{{ url_for('devices.recent_jobs', code=device.code) }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if message %}<p class="alert alert-ok">{{ message }}</p>{% endif %}
+  {% if recent_jobs %}
+    <ul class="alerts">
+      {% for job in recent_jobs %}
+        <li class="upload-item">{{ job_line(job) }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted small">Sem pedidos recentes.</p>
+  {% endif %}
+</div>

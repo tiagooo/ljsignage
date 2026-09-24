@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false}'>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Painel{% endblock %} · Vídeos das lojas · Lugar da Jóia</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+{% from "macros.html" import flashes %}
+{% block body %}
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('dashboard.index') }}">
+      <span class="brand-mark" aria-hidden="true">LJ</span>
+      <span class="brand-text"><strong>Lugar da Jóia</strong><small>Vídeos das lojas</small></span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      {% set section = (request.endpoint or '').split('.')[0] %}
+      {% for endpoint, label in NAV %}
+        <a href="{{ url_for(endpoint) }}" class="{{ 'active' if section == endpoint.split('.')[0] }}">{{ label }}</a>
+      {% endfor %}
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('auth.users') }}" class="{{ 'active' if request.endpoint in ('auth.users',) }}">Utilizadores</a>
+      {% endif %}
+    </nav>
+    <div class="topbar-right">
+      {% if worker is defined %}
+        {% if worker.alive %}
+          <span class="pill pill-ok" title="Último sinal do serviço de sincronização: {{ worker.beat_at|ago }}">Sincronização ativa</span>
+        {% else %}
+          <span class="pill pill-error">Sincronização parada</span>
+        {% endif %}
+      {% endif %}
+      <div class="user">
+        <span class="user-name">{{ current_user.display_name }}{% if current_user.is_admin %} <span class="tag">admin</span>{% endif %}</span>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-ghost btn-small">Sair</button>
+        </form>
+      </div>
+    </div>
+  </header>
+  {% if dry_run %}
+    <div class="banner" role="status">
+      <strong>Modo simulação.</strong> O sistema lê as lojas e mostra o que faria, mas não altera nada nos Raspberry Pi.
+    </div>
+  {% endif %}
+  {% if worker is defined and not worker.alive %}
+    <div class="banner banner-error" role="alert">
+      O serviço de sincronização não dá sinal{% if worker.beat_at %} desde {{ worker.beat_at|dt }}{% endif %}: as lojas não estão a ser lidas nem atualizadas.
+    </div>
+  {% endif %}
+  <main class="container">
+    {{ flashes() }}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">Lugar da Jóia · Gestão central dos vídeos das TVs de frente de loja</footer>
+{% endblock %}
+</body>
+</html>

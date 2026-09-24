@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill, alert_list, post_button, loop_duration, write_mode_pill %}
+{% block title %}{{ device.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="{{ url_for('dashboard.index') }}">Lojas</a> ›</p>
+    <h1>{{ device.store_number }} · {{ device.name }}</h1>
+    <div class="kv">
+      <span>{{ status_pill(device.status) }}</span>
+      <span>{{ write_mode_pill(summary.write_mode) }}</span>
+      <span>Pi: <strong>{{ device.host }}</strong></span>
+      <span>Lida: <strong>{{ device.last_seen_at|ago }}</strong></span>
+      {% if device.last_reconcile_at %}<span>Em dia desde: <strong>{{ device.last_reconcile_at|dt }}</strong></span>{% endif %}
+      {% if device.ftp_banner %}<span>Servidor FTP: <strong>{{ device.ftp_banner }}</strong></span>{% endif %}
+    </div>
+  </div>
+  <div class="actions">
+    <form hx-post="{{ url_for('devices.apply_now', code=device.code) }}" hx-target="#device-jobs" hx-swap="outerHTML" method="post" action="{{ url_for('devices.apply_now', code=device.code) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn" type="submit"{% if not device.video_path %} disabled{% endif %} title="{{ 'Sincroniza a loja já, sem esperar pelo próximo ciclo' if summary.write_mode == 'Escrita ativa' else 'Lê a loja já e atualiza o plano (nada é escrito no Pi)' }}">{{ "Aplicar agora" if summary.write_mode == "Escrita ativa" else "Ler loja agora" }}</button>
+    </form>
+    {% if current_user.is_admin %}
+      <form hx-post="{{ url_for('devices.discover', code=device.code) }}" hx-target="#device-jobs" hx-swap="outerHTML" method="post" action="{{ url_for('devices.discover', code=device.code) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-secondary" type="submit">Descobrir pasta</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if not device.in_config %}
+  <p class="alert alert-warning">Esta loja já não está no devices.yaml: não é sincronizada.</p>
+{% endif %}
+{{ alert_list(summary.alerts) }}
+
+<div class="two-cols section">
+  <div>
+    <section class="card">
+      <h2>A passar agora <span class="muted small">(ordem do carrossel)</span></h2>
+      {% if not device.video_path %}
+        <p class="muted">Confirme primeiro a pasta de vídeos (em baixo).</p>
+      {% elif not device.snapshot_at %}
+        <p class="muted">A loja ainda não foi lida. Use "Aplicar agora" ou aguarde o próximo ciclo.</p>
+      {% elif not summary.playing %}
+        <p class="alert alert-error">A pasta de vídeos está vazia: a TV mostra um ecrã preto.</p>
+      {% else %}
+        <p class="kv">Duração da volta: <strong>{{ loop_duration(summary.loop_known_s, summary.loop_unknown) }}</strong></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Vídeo</th><th>Origem</th><th class="num">Duração</th><th class="num">Tamanho</th></tr></thead>
+            <tbody>
+              {% for f in summary.playing %}
+                <tr>
+                  <td class="muted">{{ loop.index }}</td>
+                  <td>
+                    {% if f.state == "active" and f.video %}
+                      <a href="{{ url_for('library.detail', video_id=f.video_id) }}">{{ f.video.title }}</a>
+                    {% else %}
+                      {{ f.display_name }}
+                    {% endif %}
+                    <div class="muted small mono">{{ f.display_name }}</div>
+                    {% for issue in f.issues or [] %}<div class="small text-error">{{ ISSUE_LABELS.get(issue, issue) }}</div>{% endfor %}
+                  </td>
+                  <td>{% if f.state == "active" %}<span class="tag">App</span>{% else %}<span class="tag tag-legacy">Legado</span>{% endif %}</td>
+                  <td class="num nowrap">{{ (f.video.duration_s if f.video else None)|duration }}</td>
+                  <td class="num nowrap">{{ f.size_bytes|filesize }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if summary.legacy %}
+      <section class="card">
+        <h2>Ficheiros legados</h2>
+        <p class="muted small">Ficheiros que já estavam no Pi antes da app. Nunca são apagados sem pedido explícito; o pedido só é executado se continuar a haver um vídeo a passar.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ficheiro</th><th>Situação</th><th></th></tr></thead>
+            <tbody>
+              {% for f in summary.legacy %}
+                <tr>
+                  <td><span class="mono">{{ f.display_name }}</span><div class="muted small">{{ f.size_bytes|filesize }} · desde {{ f.first_seen_at|date }}</div></td>
+                  <td>
+                    {% for issue in f.issues or [] %}<div class="small">{{ ISSUE_LABELS.get(issue, issue) }}</div>{% endfor %}
+                    {% if f.adopted_video %}<div class="small">Adotado: <a href="{{ url_for('library.detail', video_id=f.adopted_video_id) }}">{{ f.adopted_video.title }}</a></div>{% endif %}
+                    {% if f.delete_requested_at %}<div class="small text-error">Remoção pedida por {{ f.delete_requested_by }} ({{ f.delete_requested_at|ago }})</div>{% endif %}
+                  </td>
+                  <td class="num">
+                    <div class="actions">
+                      {% if not f.is_dir and not f.adopted_video_id %}
+                        {{ post_button(url_for('devices.adopt', code=device.code, file_id=f.id), "Adotar") }}
+                      {% endif %}
+                      {% if current_user.is_admin and not f.is_dir %}
+                        {% if f.delete_requested_at %}
+                          {{ post_button(url_for('devices.cancel_delete', code=device.code, file_id=f.id), "Cancelar remoção") }}
+                        {% else %}
+                          {{ post_button(url_for('devices.request_delete', code=device.code, file_id=f.id), "Remover", "btn btn-danger btn-small", confirm="Apagar " ~ f.display_name ~ " do Pi? Esta ação não pode ser desfeita.") }}
+                        {% endif %}
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>Próxima sincronização</h2>
+      {% if summary.plan is none %}
+        <p class="muted">Sem plano: a loja ainda não foi lida.</p>
+      {% elif not summary.plan.actions %}
+        <p class="alert alert-ok">Em dia: nada a fazer.</p>
+      {% else %}
+        {% if dry_run %}<p class="muted small">Modo simulação: estas ações não serão executadas.</p>{% endif %}
+        <ol class="steps">
+          {% for action in summary.plan.actions %}<li>{{ describe(action, summary.plan) }}</li>{% endfor %}
+        </ol>
+      {% endif %}
+      {% if summary.staged %}
+        <h3 class="section">Em preparação (oculto)</h3>
+        <ul class="small">
+          {% for f in summary.staged %}
+            <li>{% if f.video %}{{ f.video.title }}{% else %}<span class="mono">{{ f.display_name }}</span>{% endif %} · {{ f.size_bytes|filesize }}{% if f.state == "partial" %} · envio incompleto{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2>Pedidos</h2>
+      {% include "devices/_jobs.html" %}
+    </section>
+
+    <section class="card">
+      <h2>Pasta de vídeos</h2>
+      {% if device.video_path %}
+        <p><span class="mono">{{ device.video_path_display }}</span></p>
+        <p class="muted small">
+          {%- if device.video_path_source == "config" %}Definida no devices.yaml{% else %}Confirmada por {{ device.video_path_confirmed_by }}{% endif -%}
+          {%- if device.video_path_confirmed_at %} em {{ device.video_path_confirmed_at|dt }}{% endif %}.
+        </p>
+        {% if current_user.is_admin and device.video_path_source != "config" %}
+          {{ post_button(url_for('devices.clear_path', code=device.code), "Escolher outra pasta", confirm="Anular a pasta confirmada? A loja deixa de ser sincronizada até confirmar outra.") }}
+        {% endif %}
+      {% elif device.config_video_path %}
+        <p>Definida no devices.yaml: <span class="mono">{{ device.config_video_path }}</span></p>
+        <p class="muted small">É validada na próxima leitura da loja.</p>
+      {% else %}
+        <p class="alert alert-warning">Por confirmar. Use "Descobrir pasta" (só leitura: nada é escrito no Pi).</p>
+      {% endif %}
+
+      {% if discovery %}
+        <h3 class="section">Última descoberta <span class="muted small">{{ device.discovery_at|dt }}</span></h3>
+        <p>{{ discovery.summary }}</p>
+        {% for c in discovery.candidates %}
+          <div class="card card-muted">
+            <p class="mono">{{ c.ftp_path|wire }}</p>
+            <ul class="small">
+              {% for e in c.evidence %}<li>{{ e|wire }}</li>{% endfor %}
+              {% if c.sample %}<li>Exemplos: {{ c.sample|map("wire")|join(", ") }}</li>{% endif %}
+            </ul>
+            {% if current_user.is_admin and device.video_path != c.ftp_path and device.video_path_source != "config" %}
+              {{ post_button(url_for('devices.confirm_path', code=device.code), "Confirmar esta pasta", "btn btn-small", confirm="Usar " ~ (c.ftp_path|wire) ~ " como pasta de vídeos desta loja?", fields={"ftp_path": c.ftp_path}) }}
+            {% elif device.video_path == c.ftp_path %}
+              <span class="pill pill-ok plain">Pasta em uso</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+        {% if discovery.notes %}
+          <ul class="small muted">{% for n in discovery.notes %}<li>{{ n|wire }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if discovery.server %}<p class="small muted">Servidor FTP: {{ discovery.server }}</p>{% endif %}
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Grupos</h2>
+      {% if device.groups %}
+        <p>{% for g in device.groups %}<span class="tag">{{ g.name }}</span> {% endfor %}</p>
+      {% else %}
+        <p class="muted small">Sem grupos (só recebe "Todas as lojas" e o que for programado para esta loja).</p>
+      {% endif %}
+      {% if device.max_bytes %}<p class="small muted">Capacidade para vídeos: {{ device.max_bytes|filesize }}</p>{% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Histórico</h2>
+      {% if history %}
+        <ul class="small alerts">
+          {% for entry in history %}
+            <li>
+              <strong>{{ ACTION_LABELS.get(entry.action, entry.action) }}</strong>
+              <span class="muted">{{ entry.created_at|dt }} · {{ entry.user_name or entry.user_email or "Sistema" }}</span>
+              {% if entry.result == "error" %}<span class="tag tag-error">erro</span>{% elif entry.result == "dry_run" %}<span class="tag">simulação</span>{% endif %}
+              <div>{{ entry.detail }}</div>
+            </li>
+          {% endfor %}
+        </ul>
+        <p><a href="{{ url_for('activity.index', loja=device.code) }}">Ver toda a atividade da loja</a></p>
+      {% else %}
+        <p class="muted small">Sem registos.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

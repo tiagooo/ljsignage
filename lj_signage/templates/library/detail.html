@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from "macros.html" import post_button, job_line %}
+{% block title %}{{ video.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="{{ url_for('library.index') }}">Biblioteca</a> ›</p>
+    <h1>{{ video.title }}</h1>
+    <div class="kv">
+      <span class="pill pill-{{ {'ready': 'ok', 'processing': 'info', 'failed': 'error'}[video.status] }} plain">{{ VIDEO_STATUS_LABELS[video.status] }}</span>
+      <span>Enviado {{ video.created_at|dt }}{% if video.created_by %} por <strong>{{ video.created_by }}</strong>{% endif %}</span>
+      {% if video.origin == "legacy" %}<span class="tag tag-legacy">Adotado: {{ video.origin_detail }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="actions">
+    {% if video.status == "ready" %}
+      <a class="btn" href="{{ url_for('schedule.create', video=video.id) }}">Programar este vídeo</a>
+    {% endif %}
+    {% if video.status == "failed" %}
+      {{ post_button(url_for('library.retry', video_id=video.id), "Tentar converter de novo", "btn") }}
+    {% endif %}
+  </div>
+</div>
+
+<div class="two-cols">
+  <div>
+    <section class="card">
+      {% if video.status == "ready" %}
+        <video class="player" controls muted preload="metadata"{% if video.thumbnail_path %} poster="{{ url_for('library.thumbnail', video_id=video.id) }}"{% endif %}>
+          <source src="{{ url_for('library.media', video_id=video.id) }}" type="video/mp4">
+        </video>
+        <p class="muted small">Pré-visualização do ficheiro que é enviado para as lojas.</p>
+      {% elif video.status == "processing" %}
+        <p>A conversão está a decorrer.</p>
+        {% if job %}<p>{{ job_line(job) }}</p>{% if job.progress %}<progress max="100" value="{{ job.progress }}"></progress>{% endif %}{% endif %}
+        <p><a href="{{ url_for('library.detail', video_id=video.id) }}">Atualizar</a></p>
+      {% else %}
+        <p class="alert alert-error">{{ video.error or "A conversão falhou." }}</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Programação</h2>
+      {% if assignments %}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Onde</th><th>Período</th><th>Ordem</th><th></th></tr></thead>
+            <tbody>
+              {% for a in assignments %}
+                <tr class="{{ 'row-ended' if a.end_at and a.end_at <= now }}">
+                  <td>{{ targets[a.id] }}{% if a.is_fallback %} <span class="tag tag-fallback">reserva</span>{% endif %}</td>
+                  <td class="nowrap">{{ a.start_at|dt }} → {{ a.end_at|dt if a.end_at else "sem fim" }}</td>
+                  <td>{{ a.position }}</td>
+                  <td class="num"><a href="{{ url_for('schedule.edit', assignment_id=a.id) }}">Editar</a></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted">Ainda não está programado.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Nas lojas</h2>
+      {% if on_devices %}
+        <ul>
+          {% for f, d in on_devices %}
+            <li><a href="{{ url_for('devices.detail', code=d.code) }}">{{ d.label }}</a> — {{ "a passar" if f.state == "active" else "em preparação" }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Não está em nenhuma loja (segundo a última leitura).</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2>Título</h2>
+      <form method="post" action="{{ url_for('library.update', video_id=video.id) }}">
+        {{ form.csrf_token }}
+        <div class="field">
+          <label for="title" class="sr-only">Título</label>
+          {{ form.title(id="title", required=true, maxlength=200) }}
+          <span class="help">Nome no Pi: <span class="mono">NNN_{{ video.slug }}-{{ (video.sha256 or "xxxxxx")[:6] }}.mp4</span> (não muda com o título).</span>
+        </div>
+        <button class="btn btn-secondary" type="submit">Guardar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Ficheiro</h2>
+      <dl class="details">
+        <dt>Original</dt><dd>{{ video.original_filename }}</dd>
+        {% if video.source_info %}
+          <dt>Formato original</dt>
+          <dd>{{ video.source_info.video_codec }} {{ video.source_info.width }}×{{ video.source_info.height }}{% if video.source_info.fps %}, {{ video.source_info.fps|number }} fps{% endif %}{% if video.source_info.has_audio %}, com som{% endif %}</dd>
+        {% endif %}
+        {% if video.status == "ready" %}
+          <dt>Convertido</dt><dd>H.264 High 4.1 · {{ video.width }}×{{ video.height }}{% if video.fps %} · {{ video.fps|number }} fps{% endif %}</dd>
+          <dt>Duração</dt><dd>{{ video.duration_s|duration }}</dd>
+          <dt>Tamanho</dt><dd>{{ video.size_bytes|filesize }}</dd>
+          <dt>SHA-256</dt><dd class="mono">{{ video.sha256[:16] }}…</dd>
+        {% endif %}
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Apagar</h2>
+      {% if blocking %}
+        <p class="muted small">Não é possível apagar: o vídeo tem {{ blocking|length }} programação(ões) a decorrer ou agendada(s). Termine-as primeiro.</p>
+      {% else %}
+        <p class="muted small">O vídeo sai de todas as lojas na próxima sincronização.</p>
+        {{ post_button(url_for('library.delete', video_id=video.id), "Apagar vídeo", "btn btn-danger", confirm="Apagar «" ~ video.title ~ "» da biblioteca?") }}
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+# lj-signage no docker-server (docs/SPEC.md §11).
+#   cp .env.example .env                              # e preencher
+#   cp config/devices.example.yaml config/devices.yaml
+#   docker compose up -d --build
+name: lj-signage
+
+x-app: &app
+  build:
+    context: .
+    target: app
+  image: lj-signage:latest
+  env_file: .env
+  environment:
+    DATA_DIR: /data
+    DEVICES_FILE: /app/config/devices.yaml
+  volumes:
+    - lj-data:/data
+    - ./config:/app/config:ro
+  # Os Pis são raspservidor<sigla>.lugardajoia.internal: DNS internos da LJ (SPEC §14.10).
+  dns:
+    - ${DNS_PRIMARY:-10.0.2.2}
+    - ${DNS_SECONDARY:-10.0.2.20}
+  dns_search:
+    - lugardajoia.internal
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    command: ["/app/docker/web-start.sh"]
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "lj_signage.worker"]
+    depends_on:
+      web:
+        condition: service_healthy
+    stop_grace_period: 60s
+
+volumes:
+  lj-data:

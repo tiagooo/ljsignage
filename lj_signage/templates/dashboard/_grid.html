@@ -1,0 +1,28 @@
+{% from "macros.html" import status_pill, alert_list, loop_duration %}
+<div id="store-grid" class="grid" hx-get="{{ url_for('dashboard.grid') }}" hx-trigger="every 30s" hx-swap="outerHTML">
+  {% for s in summaries %}
+    <a class="card store-card status-{{ s.device.status }}" href="{{ url_for('devices.detail', code=s.device.code) }}">
+      <div class="store-head">
+        <span class="store-number">{{ s.device.store_number }}</span>
+        <div>
+          <h3>{{ s.device.name }}</h3>
+          <span class="muted small">{{ s.device.code }} · {{ s.write_mode }}</span>
+        </div>
+        {{ status_pill(s.device.status) }}
+      </div>
+      <dl class="facts">
+        <div><dt>A passar</dt><dd>{{ s.playable_count if s.device.snapshot_at else "—" }}</dd></div>
+        <div><dt>Volta</dt><dd{% if s.loop_unknown %} title="Inclui ficheiros legados de duração desconhecida"{% endif %}>{{ s.loop_label }}</dd></div>
+        <div><dt>Lida</dt><dd>{{ s.device.last_seen_at|ago }}</dd></div>
+      </dl>
+      {% set shown = s.alerts | rejectattr("level", "equalto", "info") | list %}
+      {{ alert_list(shown[:3], compact=True) }}
+      {% if shown|length > 3 %}<span class="muted small">+ {{ shown|length - 3 }} aviso(s)</span>{% endif %}
+    </a>
+  {% else %}
+    <div class="card">
+      <h2>Ainda não há lojas</h2>
+      <p class="muted">Copie config/devices.example.yaml para config/devices.yaml e corra <span class="mono">flask devices sync</span>.</p>
+    </div>
+  {% endfor %}
+</div>
